@@ -77,7 +77,7 @@ def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=
     generated = context
     with torch.no_grad():
         for _ in trange(length):
-
+            #import pdb;pdb.set_trace()
             inputs = {'input_ids': generated}
             if is_xlnet:
                 # XLNet is a direct (predict same token, not next token) and bi-directional model by default
@@ -111,7 +111,7 @@ def main():
                         help='模型参数')
     parser.add_argument('--tokenizer_path', default='cache/vocab_small.txt', type=str, required=False, help='词表路径')
     parser.add_argument('--model_path', default='model/final_model', type=str, required=False, help='模型路径')
-    parser.add_argument('--prefix', default='萧炎', type=str, required=False, help='生成文章的开头')
+    parser.add_argument('--prefix', default='美国', type=str, required=False, help='生成文章的开头')
 
     args = parser.parse_args()
     print(args)
