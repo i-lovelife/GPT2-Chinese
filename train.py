@@ -11,7 +11,7 @@ from tqdm import tqdm
 from torch.nn import DataParallel
 
 
-def build_files(data_path, tokenized_data_path, num_pieces, full_tokenizer, min_length):
+def build_files(data_path, tokenized_data_path, num_pieces, full_tokenizer, min_length, reverse):
     if not os.path.exists(tokenized_data_path):
         os.mkdir(tokenized_data_path)
     with open(data_path, 'r', encoding='utf8') as f:
@@ -29,9 +29,9 @@ def build_files(data_path, tokenized_data_path, num_pieces, full_tokenizer, min_
         full_line = []
         for subline in sublines:
             full_line.append(full_tokenizer.convert_tokens_to_ids('[MASK]'))  # 文章开头添加MASK表示文章开始
-            full_line.extend(subline)
+            full_line.extend(subline if reverse == False else subline[::-1])
             full_line.append(full_tokenizer.convert_tokens_to_ids('[CLS]'))  # 文章之间添加CLS表示文章结束
-        with open(tokenized_data_path + 'tokenized_train_{}.txt'.format(i), 'w') as f:
+        with open(tokenized_data_path + f'tokenized_train_{i}_{reverse}.txt', 'w') as f:
             for id in full_line:
                 f.write(str(id) + ' ')
     print('finish')
@@ -40,9 +40,9 @@ def build_files(data_path, tokenized_data_path, num_pieces, full_tokenizer, min_
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='0,1,2,3', type=str, required=False, help='设置使用哪些显卡')
-    parser.add_argument('--model_config', default='config/model_config_small.json', type=str, required=False,
+    parser.add_argument('--model_config', default='config/wiki_small.json', type=str, required=False,
                         help='选择模型参数')
-    parser.add_argument('--tokenizer_path', default='cache/vocab_small.txt', type=str, required=False, help='选择词库')
+    parser.add_argument('--tokenizer_path', default='cache/vocab_wiki_small.txt', type=str, required=False, help='选择词库')
     parser.add_argument('--raw_data_path', default='data/train.json', type=str, required=False, help='原始训练语料')
     parser.add_argument('--tokenized_data_path', default='data/tokenized/', type=str, required=False,
                         help='tokenized语料存放位置')
@@ -64,6 +64,7 @@ def main():
     parser.add_argument('--writer_dir', default='tensorboard_summary/', type=str, required=False, help='Tensorboard路径')
     parser.add_argument('--no_wordpiece', action='store_true', help='不做word piece切词')
     parser.add_argument('--segment', action='store_true', help='中文以词为单位')
+    parser.add_argument('--reverse', action='store_true', help='是否反向语料')
 
     args = parser.parse_args()
     print('args:\n' + args.__repr__())
@@ -102,6 +103,7 @@ def main():
     num_pieces = args.num_pieces
     min_length = args.min_length
     output_dir = args.output_dir
+    reverse = args.reverse
     tb_writer = SummaryWriter(log_dir=args.writer_dir)
 
     if not os.path.exists(output_dir):
@@ -110,7 +112,7 @@ def main():
     if raw:
         print('building files')
         build_files(data_path=raw_data_path, tokenized_data_path=tokenized_data_path, num_pieces=num_pieces,
-                    full_tokenizer=full_tokenizer, min_length=min_length)
+                    full_tokenizer=full_tokenizer, min_length=min_length, reverse=reverse)
         print('files built')
 
     if not args.pretrained_model:
@@ -130,7 +132,7 @@ def main():
     full_len = 0
     print('calculating total steps')
     for i in tqdm(range(num_pieces)):
-        with open(tokenized_data_path + 'tokenized_train_{}.txt'.format(i), 'r') as f:
+        with open(tokenized_data_path + f'tokenized_train_{i}_{reverse}.txt', 'r') as f:
             full_len += len([int(item) for item in f.read().strip().split()])
     total_steps = int(full_len / stride * epochs / batch_size / gradient_accumulation)
     print('total steps = {}'.format(total_steps))
@@ -160,7 +162,7 @@ def main():
         piece_num = 0
         for i in x:
             running_loss = 0
-            with open(tokenized_data_path + 'tokenized_train_{}.txt'.format(i), 'r') as f:
+            with open(tokenized_data_path + f'tokenized_train_{i}_{reverse}.txt', 'r') as f:
                 line = f.read().strip()
             tokens = line.split()
             tokens = [int(token) for token in tokens]
