@@ -126,7 +126,7 @@ def test_lm():
     prob = sum(prob_history) / len(prob_history)
     print(forward_prob, prob)
     assert np.isclose(forward_prob, prob, 1e-3)
-test_lm()
+#test_lm()
 
 def predict(model,
             constraint_list,
@@ -213,11 +213,12 @@ def predict(model,
     return best_sentence[1:], best_score_history
         
 def test_grid_beam_search():
-    model_path = 'model/model_epoch4/'
+    model_path = 'model/backwardmodel_epoch9/'
     tokenizer_path = 'cache/vocab_wiki_small.txt'
     sentence = '有唐一代，山西一直以其特殊的地位和发达的经济、文化称著于世'
     forward_lm = Gpt2LanguageModel(model_path, tokenizer_path)
     forward_lm.generate_sentence()
     
     #predict(forward_lm, constraint_list=['山西', '经济'])
-test_grid_beam_search()
+if __name__ == '__main__':
+    test_grid_beam_search()
