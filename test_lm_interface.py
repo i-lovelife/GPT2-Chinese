@@ -83,6 +83,19 @@ class Gpt2LanguageModel:
             Y = Y[0, -1, :].cpu().numpy()
         return Y, new_state
 
+    def inference(self, sentence, conditioned_on_start=True, require_tokenize=True):
+        self.model.eval()
+        vocab = self.vocab
+        indexed_sentence = vocab.sentence2idx(sentence, require_tokenize=require_tokenize)
+        if conditioned_on_start:
+            indexed_sentence = [vocab[vocab.START_CHAR]] + indexed_sentence
+        X = torch.tensor([indexed_sentence]).to(self.device)
+        with torch.no_grad():
+            Y_pred, hidden = self.model(X)[:2]
+            Y_pred = F.softmax(Y_pred, dim=-1)
+            Y = -torch.log(Y_pred[0, -1, :]).cpu().numpy()
+        return Y
+
     def get_sentence_prob(self, sentence, require_tokenize=True):
         # Y_pred: (batch_size, seq_len, vocab_size)
         # Y: (batch_size, seq_len)
@@ -126,7 +139,9 @@ def test_lm():
     prob = sum(prob_history) / len(prob_history)
     print(forward_prob, prob)
     assert np.isclose(forward_prob, prob, 1e-3)
-#test_lm()
+
+    # test inference 
+    print(forward_lm.inference(sentence))
 
 def predict(model,
             constraint_list,
@@ -221,4 +236,5 @@ def test_grid_beam_search():
     
     #predict(forward_lm, constraint_list=['山西', '经济'])
 if __name__ == '__main__':
-    test_grid_beam_search()
+    test_lm()
+    #test_grid_beam_search()
